@@ -7,6 +7,7 @@ and basic DOM parsing.
 */
 
 var fs = require('fs');
+var rest = require('restler');
 var program = require('commander');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
@@ -49,9 +50,25 @@ var clone = function(fn) {
 
 if (require.main == module) {
 	program
-		.option('-C, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
+		.option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
 		.option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+		.option('-u, --url <url>', 'url of html file')
 		.parse(process.argv);
+
+	// If url is not null, download html page to file 'url_html' and
+	// set program.file = 'url_html'
+	if (program.url != '') {
+		// console.log("url to download html: " + program.url);
+		rest.get(program.url).on('complete', function(result) {
+			if (result instanceof Error) {
+				console.log('Error: ' + result.message);
+				// this.retry(5000); // try again after 5 sec
+			} else {
+				fs.writeFileSync('url_html', result);
+				program.file = 'url_html';
+			}	
+		});
+	}
 
 	var checkJson = checkHtmlFile(program.file, program.checks);
 	var outJson = JSON.stringify(checkJson, null, 4);
